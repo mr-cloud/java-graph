@@ -8,6 +8,7 @@
 package roadgraph;
 
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -25,6 +26,9 @@ import util.GraphLoader;
 public class MapGraph {
 	//TODO: Add your member variables here in WEEK 2
 	
+	//data structure
+	//use Set to maintain the vertices.
+	private Set<GeographicPoint> vertices;
 	
 	/** 
 	 * Create a new empty MapGraph 
@@ -32,6 +36,7 @@ public class MapGraph {
 	public MapGraph()
 	{
 		// TODO: Implement in this constructor in WEEK 2
+		this.vertices = new HashSet<GeographicPoint>();
 	}
 	
 	/**
@@ -76,7 +81,10 @@ public class MapGraph {
 	public boolean addVertex(GeographicPoint location)
 	{
 		// TODO: Implement this method in WEEK 2
-		return false;
+		//focus on functionality, not service logic and no need to consider exception, 
+		//e.g. the location to be added whether exists in Set already. 
+		//But there is a return statement, so take care of that.
+		return this.vertices.add(location);
 	}
 	
 	/**
