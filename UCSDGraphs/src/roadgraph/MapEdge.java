@@ -90,6 +90,10 @@ class MapEdge
 		return roadName;
 	}
 	
+	//return road type
+	public String getRoadType(){
+		return roadType;
+	}
 	// given one node in an edge, return the other node
 	MapNode getOtherNode(MapNode node)
 	{

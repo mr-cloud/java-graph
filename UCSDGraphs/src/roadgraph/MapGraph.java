@@ -33,7 +33,25 @@ public class MapGraph {
 	// that contain those nodes.
 	private HashMap<GeographicPoint, MapNode> pointNodeMap;
 	private HashSet<MapEdge> edges;
-
+	
+	//map road type to speed limit. use trip duration other than distance 
+	//to choice the shortest way. 
+	private final double roadTypeSpeedLimitMapping(final String roadType){
+		double speedLimit = 0;
+		switch(roadType){
+		case "city street":
+			speedLimit = 80.0;//here unit is km/h
+			break;
+		case "residential":
+			speedLimit = 60.0;
+			break;
+		case "connector":
+			speedLimit = 40.0;
+			break;
+		default:;
+		}
+		return speedLimit;
+	}
 	/**
 	 * Create a new empty MapGraph
 	 *
@@ -403,6 +421,149 @@ public class MapGraph {
 	}
 
 	/**
+	 * Find the path from start to goal using Dijkstra's algorithm
+	 * 
+	 * @param start
+	 *            The starting location
+	 * @param goal
+	 *            The goal location
+	 * @return The list of intersections that form the shortest path from start
+	 *         to goal (including both start and goal).
+	 */
+	public List<GeographicPoint> dijkstra(GeographicPoint start, GeographicPoint goal, String transTool) {
+		// Dummy variable for calling the search algorithms
+		// You do not need to change this method.
+		Consumer<GeographicPoint> temp = (x) -> {
+			System.out.println("visiting:");
+			System.out.println(x.x + "," + x.y);
+
+		};
+		return dijkstra(start, goal, temp, transTool);
+	}
+
+	/**
+	 * Find the path from start to goal using Dijkstra's algorithm
+	 * 
+	 * @param start
+	 *            The starting location
+	 * @param goal
+	 *            The goal location
+	 * @param nodeSearched
+	 *            A hook for visualization. See assignment instructions for how
+	 *            to use it.
+	 * @return The list of intersections that form the shortest path from start
+	 *         to goal (including both start and goal).
+	 */
+	public List<GeographicPoint> dijkstra(GeographicPoint start, GeographicPoint goal,
+			Consumer<GeographicPoint> nodeSearched, String transTool) {
+		// TODO: Implement this method in WEEK 3
+
+		// Hook for visualization. See writeup.
+		// nodeSearched.accept(next.getLocation());
+
+		// return null;
+		// Setup - check validity of inputs
+		if (start == null || goal == null)
+			throw new NullPointerException("Cannot find route from or to null node");
+		MapNode startNode = pointNodeMap.get(start);
+		MapNode endNode = pointNodeMap.get(goal);
+		if (startNode == null) {
+			System.err.println("Start node " + start + " does not exist");
+			return null;
+		}
+		if (endNode == null) {
+			System.err.println("End node " + goal + " does not exist");
+			return null;
+		}
+
+		// setup to begin Dijkstra
+		HashMap<MapNode, MapNode> parentMap = new HashMap<MapNode, MapNode>();
+		Queue<MapNode> toExplore = new PriorityQueue<MapNode>();
+		HashSet<MapNode> visited = new HashSet<MapNode>();
+		//initialize to positive infinity for all vertices
+		for(MapNode tmp : this.pointNodeMap.values()){
+			tmp.setActualDistance(Double.POSITIVE_INFINITY);
+			tmp.setDistance(tmp.getActualDistance());
+		}
+		// startNode with 0 actual distance.
+		startNode.setActualDistance(0);
+		startNode.setDistance(startNode.getActualDistance());
+		toExplore.add(startNode);
+		MapNode next = null;
+		
+		//for advanced testing
+		int countExploredNodes = 0;
+		
+		while (!toExplore.isEmpty()) {
+			next = toExplore.remove();
+			visited.add(next);
+			countExploredNodes++;
+			// hook for visualization
+			nodeSearched.accept(next.getLocation());
+			System.out.println("distance: " + next.getDistance());
+			if (next.equals(endNode))
+				break;
+			Set<MapNode> neighbors = getNeighbors(next);
+			for (MapNode neighbor : neighbors) {
+				if (!visited.contains(neighbor)) {
+					//visited.add(neighbor); //bug fixed, it is feasible for BFS since the later node enqueues, the more hops it takes.
+					// update actual distance from the start node to the
+					// neighbor node.
+					for (MapEdge tmp : next.getEdges()) {
+						if (tmp.getEndNode().equals(neighbor)) {
+							//judge the distance from the start node to the neighbor node.
+							//if it is shorter, then replace the relation in parent-map.
+							
+							//choose way's weight in accordance with the transportation tools.
+							double roadWeight = getRoadWeight(tmp, transTool);
+							System.out.println("roadWeight:" + " " + roadWeight);
+							if(next.getActualDistance() + roadWeight < neighbor.getDistance()){
+								System.out.println("shorter way to the neighbor node: " + next.toString() + neighbor.toString() + "\nthe edge:" + tmp.toString());
+								parentMap.put(neighbor, next);
+								//neighbor.setActualDistance(next.getActualDistance() + tmp.getLength());
+								//convert length to time.
+		/*						double roadDuration = tmp.getLength()/this.roadTypeSpeedLimitMapping(tmp.getRoadType());
+								System.out.println("roadDuration:" + " " + roadDuration);
+		*/						
+								neighbor.setActualDistance(next.getActualDistance() + roadWeight);
+								neighbor.setDistance(neighbor.getActualDistance());
+								toExplore.add(neighbor);
+							}
+						}
+					}
+				}
+			}
+		}
+		if (!next.equals(endNode)) {
+			System.out.println("No path found from " + start + " to " + goal);
+			return null;
+		}
+
+		// Reconstruct the parent path
+		List<GeographicPoint> path = reconstructPath(parentMap, startNode, endNode);
+		
+		System.out.println("Explored Nodes number: " + countExploredNodes);
+		return path;
+
+	}
+
+	private double getRoadWeight(MapEdge edge, String transTool) {
+		// TODO Auto-generated method stub
+		double roadWeight = Double.POSITIVE_INFINITY;
+		switch(transTool){
+		case "bus":
+		case "car":
+			roadWeight = edge.getLength()/roadTypeSpeedLimitMapping(edge.getRoadType());
+			break;
+		case "walk":
+			roadWeight = edge.getLength()/7.2;//walk speed at 7.2km/h.
+		case "flight":
+			roadWeight = edge.getLength()/900;//flight speed at 900km/h.
+		default:;
+		}
+		return roadWeight;
+	}
+	/**
 	 * Find the path from start to goal using A-Star search
 	 * 
 	 * @param start
@@ -521,7 +682,7 @@ public class MapGraph {
 		 * System.out.println("DONE.");
 		 */
 
-/*		// more advanced testing
+		// more advanced testing
 		System.out.print("Making a new map...");
 		MapGraph theMap = new MapGraph();
 		System.out.print("DONE. \nLoading the map...");
@@ -536,10 +697,11 @@ public class MapGraph {
 
 		System.out.println(route);
 
-		route = theMap.dijkstra(new GeographicPoint(7.0, 3.0), new GeographicPoint(4.0, -1.0));
+		route = theMap.dijkstra(new GeographicPoint(7.0, 3.0), new GeographicPoint(4.0, -1.0), "bus");
+		route = theMap.dijkstra(new GeographicPoint(7.0, 3.0), new GeographicPoint(4.0, -1.0), "walk");
 
 		System.out.println(route);
-*/
+
 		/*
 		 * // Use this code in Week 3 End of Week Quiz MapGraph theMap = new
 		 * MapGraph(); System.out.print("DONE. \nLoading the map...");
@@ -552,7 +714,7 @@ public class MapGraph {
 		 * List<GeographicPoint> route = theMap.dijkstra(start,end);
 		 * List<GeographicPoint> route2 = theMap.aStarSearch(start,end);
 		 */
-		MapGraph theMap = new MapGraph();
+/*		MapGraph theMap = new MapGraph();
 		System.out.print("DONE. \nLoading the map...");
 		GraphLoader.loadRoadMap("data/maps/utc.map", theMap);
 		System.out.println("DONE.");
@@ -560,9 +722,9 @@ public class MapGraph {
 		GeographicPoint start = new GeographicPoint(32.8648772, -117.2254046);
 		GeographicPoint end = new GeographicPoint(32.8660691, -117.217393);
 
-		List<GeographicPoint> route = theMap.dijkstra(start,end);
-		List<GeographicPoint> route2 = theMap.aStarSearch(start,end);
-
+		List<GeographicPoint> route = theMap.dijkstra(start, end);
+		List<GeographicPoint> route2 = theMap.aStarSearch(start, end);
+*/
 	}
 
 }
