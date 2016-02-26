@@ -21,8 +21,34 @@ public class GeographicPoint extends Double {
 		return getDist(this.getX(), this.getY(),
                 other.getX(), other.getY());     
 	}
+	public double myDistance(GeographicPoint other)
+	{
+		return getMyDist(this.getX(), this.getY(),
+                other.getX(), other.getY());     
+	}
 	
-    
+    /**
+     * Calculates the geographic distance in km between this point and 
+	 * the other point. 
+     * @param lat1
+     * @param lon1
+     * @param lat2
+     * @param lon2
+     * @return double ,the distance between two points on the earth surface.
+     */
+    private double getMyDist(double lat1, double lon1, double lat2, double lon2)
+    {
+    	int R = 6373; // radius of the earth in kilometres
+    	lat1 = Math.toRadians(lat1);
+    	lat2 = Math.toRadians(lat2);
+    	lon1 = Math.toRadians(lon1);
+    	lon2 = Math.toRadians(lon2);
+    	
+    	double angle = Math.acos(Math.sin(lon1)*Math.sin(lon2)
+    			+ Math.cos(lon1)*Math.cos(lon2)*Math.cos(lat1 - lat2));
+    	double arc = R * angle;
+		return arc;
+    }
     private double getDist(double lat1, double lon1, double lat2, double lon2)
     {
     	int R = 6373; // radius of the earth in kilometres
