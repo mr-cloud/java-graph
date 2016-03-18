@@ -642,7 +642,9 @@ public class MapGraph {
 				break;
 			Set<MapNode> neighbors = getNeighbors(next);
 			for (MapNode neighbor : neighbors) {
+				
 				if (!visited.contains(neighbor)) {
+					/*
 					parentMap.put(neighbor, next);
 					// update actual distance from the start node to the
 					// neighbor node.
@@ -655,8 +657,24 @@ public class MapGraph {
 							toExplore.add(neighbor);
 						}
 					}
+					*/
 				}
+				
+					for (MapEdge tmp : next.getEdges()) {
+						if (tmp.getEndNode().equals(neighbor)) {
+							//judge the distance from the start node to the neighbor node.
+							//if it is shorter, then replace the relation in parent-map.
+							if(next.getDistance() + tmp.getLength() < neighbor.getDistance()){
+								System.out.println("shorter way to the neighbor node: " + next.toString() + neighbor.toString());
+								parentMap.put(neighbor, next);
+								neighbor.setActualDistance(next.getActualDistance() + tmp.getLength());
+								neighbor.setDistance(neighbor.getActualDistance() + goal.distance(neighbor.getLocation()));
+								toExplore.add(neighbor);
+							}
+						}
+					}
 			}
+
 		}
 		if (!next.equals(endNode)) {
 			System.out.println("No path found from " + start + " to " + goal);
