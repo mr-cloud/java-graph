@@ -664,7 +664,9 @@ public class MapGraph {
 						if (tmp.getEndNode().equals(neighbor)) {
 							//judge the distance from the start node to the neighbor node.
 							//if it is shorter, then replace the relation in parent-map.
-							if(next.getDistance() + tmp.getLength() < neighbor.getDistance()){
+							//bug fixed:一条路径到该节点所花实际代价比当前已知代价更大，这并不是一条更好的路径
+//							if(next.getDistance() + tmp.getLength() < neighbor.getDistance()){
+							if(next.getActualDistance() + tmp.getLength() < neighbor.getActualDistance()){
 								System.out.println("shorter way to the neighbor node: " + next.toString() + neighbor.toString());
 								parentMap.put(neighbor, next);
 								neighbor.setActualDistance(next.getActualDistance() + tmp.getLength());
