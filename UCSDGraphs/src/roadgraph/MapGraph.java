@@ -3,7 +3,10 @@
  */
 package roadgraph;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.DecimalFormat;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,9 +14,14 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Properties;
 import java.util.Queue;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
 
 import geography.GeographicPoint;
 import geography.RoadSegment;
@@ -56,9 +64,25 @@ public class MapGraph {
 	 * Create a new empty MapGraph
 	 *
 	 */
-	public MapGraph() {
+	//get logger
+	private static final Logger myGraphLogger = Logger.getLogger((MapGraph.class.getPackage().getName()));
+	public MapGraph(){
 		pointNodeMap = new HashMap<GeographicPoint, MapNode>();
 		edges = new HashSet<MapEdge>();
+		//add a file handler to logger
+		String userHome = System.getProperty("user.home");
+		File logDir = new File(userHome + "/javalogs");
+		if(!logDir.exists()){
+			logDir.mkdirs();
+		}
+		FileHandler fileHandler;
+		try {
+			fileHandler = new FileHandler("%h/javalogs/graph0.log", 0, 3, true);
+			myGraphLogger.addHandler(fileHandler);
+		} catch (SecurityException | IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -338,6 +362,9 @@ public class MapGraph {
 	 */
 	public List<GeographicPoint> dijkstra(GeographicPoint start, GeographicPoint goal,
 			Consumer<GeographicPoint> nodeSearched) {
+		//print the size of this graph
+		System.out.println("this graph contains " + this.getNumVertices() + " vertices, "
+				+ this.getNumEdges() + " edges.");
 		// TODO: Implement this method in WEEK 3
 
 		// Hook for visualization. See writeup.
@@ -375,11 +402,17 @@ public class MapGraph {
 		
 		//for advanced testing
 		int countExploredNodes = 0;
+		//for repeated dequed nodes
+		int repeatedDequedNodes = 0;
 		
 		while (!toExplore.isEmpty()) {
+			System.out.println("there exists " + toExplore.size() + " vertices in the queue.");
 			next = toExplore.remove();
-			visited.add(next);
+			if(visited.add(next) == false){
+				repeatedDequedNodes++;
+			}
 			countExploredNodes++;
+//			System.out.println("get shortest way for node: " + next.toString());
 			// hook for visualization
 			nodeSearched.accept(next.getLocation());
 			System.out.println("distance: " + next.getDistance());
@@ -396,7 +429,7 @@ public class MapGraph {
 							//judge the distance from the start node to the neighbor node.
 							//if it is shorter, then replace the relation in parent-map.
 							if(next.getActualDistance() + tmp.getLength() < neighbor.getDistance()){
-								System.out.println("shorter way to the neighbor node: " + next.toString() + neighbor.toString());
+//								System.out.println("shorter way to the neighbor node: " + next.toString() + neighbor.toString());
 								parentMap.put(neighbor, next);
 								neighbor.setActualDistance(next.getActualDistance() + tmp.getLength());
 								neighbor.setDistance(neighbor.getActualDistance());
@@ -415,7 +448,20 @@ public class MapGraph {
 		// Reconstruct the parent path
 		List<GeographicPoint> path = reconstructPath(parentMap, startNode, endNode);
 		
+		System.out.println("there still remains " + toExplore.size() + " vertices in queue.");
 		System.out.println("Explored Nodes number: " + countExploredNodes);
+		
+		System.out.println("\n\nthe effectiveness of space(|queue|/|V|): " + (100.0 * toExplore.size()/(double)this.getNumVertices()) + "%"
+				+ "\nthe effectiveness of time(|visited nodes|/|path of nodes|): " + (countExploredNodes/(double)path.size()));
+		System.out.println("the overheads caused by auto-incremented queue(|repeated visited nodes|/|visited nodes|): " + (100.0*repeatedDequedNodes/(double)countExploredNodes)
+				+ "%\n\n");
+		
+		DecimalFormat percentFormat = new DecimalFormat("#0.00");
+		myGraphLogger.log(Level.INFO, this.getNumVertices() + " vertices, "
+				+ this.getNumEdges() + " edges\n"
+				+ "the effectiveness of space(1 - |the residual of queue|/|V|): " + percentFormat.format(100.0 *(1- toExplore.size()/(double)this.getNumVertices())) + "%\n"
+				+ "the effectiveness of time(|path of nodes|/|visited nodes|): " + percentFormat.format(100.0 *path.size()/(double)countExploredNodes) + "%\n"
+				+ "the overheads caused by auto-incremented queue(|repeated visited nodes|/|visited nodes|): " + percentFormat.format(100.0*repeatedDequedNodes/(double)countExploredNodes) + "%");
 		return path;
 
 	}
@@ -595,6 +641,9 @@ public class MapGraph {
 	 */
 	public List<GeographicPoint> aStarSearch(GeographicPoint start, GeographicPoint goal,
 			Consumer<GeographicPoint> nodeSearched) {
+		//print the size of this graph
+		System.out.println("this graph contains " + this.getNumVertices() + " vertices, "
+				+ this.getNumEdges() + " edges.");
 		// TODO: Implement this method in WEEK 3
 
 		// Hook for visualization. See writeup.
@@ -630,10 +679,15 @@ public class MapGraph {
 		MapNode next = null;
 		//for advanced testing
 		int countExploredNodes = 0;
+		//for repeated dequed nodes
+		int repeatedDequedNodes = 0;
 
 		while (!toExplore.isEmpty()) {
 			next = toExplore.remove();
-			visited.add(next);
+//			visited.add(next);
+			if(visited.add(next) == false){
+				repeatedDequedNodes++;
+			}		
 			countExploredNodes++;
 			// hook for visualization
 			nodeSearched.accept(next.getLocation());
@@ -667,7 +721,7 @@ public class MapGraph {
 							//bug fixed:一条路径到该节点所花实际代价比当前已知代价更大，这并不是一条更好的路径
 //							if(next.getDistance() + tmp.getLength() < neighbor.getDistance()){
 							if(next.getActualDistance() + tmp.getLength() < neighbor.getActualDistance()){
-								System.out.println("shorter way to the neighbor node: " + next.toString() + neighbor.toString());
+//								System.out.println("shorter way to the neighbor node: " + next.toString() + neighbor.toString());
 								parentMap.put(neighbor, next);
 								neighbor.setActualDistance(next.getActualDistance() + tmp.getLength());
 								neighbor.setDistance(neighbor.getActualDistance() + goal.distance(neighbor.getLocation()));
@@ -686,8 +740,20 @@ public class MapGraph {
 		// Reconstruct the parent path
 		List<GeographicPoint> path = reconstructPath(parentMap, startNode, endNode);
 		
+		System.out.println("there still remains " + toExplore.size() + " vertices in queue.");
 		System.out.println("Explored Nodes number: " + countExploredNodes);
-
+		
+		System.out.println("\n\nthe effectiveness of space(|queue|/|V|): " + (100.0 * toExplore.size()/(double)this.getNumVertices()) + "%"
+				+ "\nthe effectiveness of time(|visited nodes|/|path of nodes|): " + (countExploredNodes/(double)path.size()));
+		System.out.println("the overheads increased by auto-incremented queue(|repeated visited nodes|/|visited nodes|): " + (100.0*repeatedDequedNodes/(double)countExploredNodes)
+				+ "%\n\n");
+		
+		DecimalFormat percentFormat = new DecimalFormat("#0.00");
+		myGraphLogger.log(Level.INFO, this.getNumVertices() + " vertices, "
+				+ this.getNumEdges() + " edges\n"
+				+ "the effectiveness of space(1 - |the residual of queue|/|V|): " + percentFormat.format(100.0 *(1- toExplore.size()/(double)this.getNumVertices())) + "%\n"
+				+ "the effectiveness of time(|path of nodes|/|visited nodes|): " + percentFormat.format(100.0 *path.size()/(double)countExploredNodes) + "%\n"
+				+ "the overheads caused by auto-incremented queue(|repeated visited nodes|/|visited nodes|): " + percentFormat.format(100.0*repeatedDequedNodes/(double)countExploredNodes) + "%");
 		return path;
 
 	}
