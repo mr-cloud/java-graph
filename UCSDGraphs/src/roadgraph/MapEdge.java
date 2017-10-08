@@ -117,4 +117,5 @@ class MapEdge
 		return toReturn;
 	}
 
+	// TODO override equals and hashCode methods.
 }
